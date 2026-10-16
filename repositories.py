@@ -77,3 +77,39 @@ class JsonStudentRepo(IStudentRepo):
         self.students.remove(student)
         self.save_data()
         return True
+
+
+class InMemoryStudentRepo(IStudentRepo):
+    def __init__(self):
+        self.students = []
+        self.next_id = 1
+
+    def get_students(self):
+        return self.students
+
+    def get_student_by_id(self, student_id):
+        for student in self.students:
+            if student["id"] == student_id:
+                return student
+        return None
+
+    def add_student(self, name, group):
+        student = {"id": self.next_id, "name": name, "group": group}
+        self.next_id += 1
+        self.students.append(student)
+        return student
+
+    def update_student(self, student_id, name, group):
+        student = self.get_student_by_id(student_id)
+        if student is None:
+            return None
+        student["name"] = name
+        student["group"] = group
+        return student
+
+    def delete_student(self, student_id):
+        student = self.get_student_by_id(student_id)
+        if student is None:
+            return False
+        self.students.remove(student)
+        return True
