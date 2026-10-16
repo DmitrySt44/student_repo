@@ -21,10 +21,16 @@
       list.innerHTML = "";
 
       for (const s of allStudents) {
-        list.innerHTML += `<li>${s.id}. ${s.name} (${s.group})
+        list.innerHTML += `<li>${s.id}. ${escapeHtml(s.name)} (${escapeHtml(s.group)})
           <button onclick="editStudent(${s.id})">Изменить</button>
           <button onclick="deleteStudent(${s.id})">Удалить</button></li>`;
       }
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement("div");
+      div.textContent = text;
+      return div.innerHTML;
     }
 
     async function addStudent() {
