@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
-from pydantic import BaseModel, ConfigDict, Field
 
+from models import StudentIn
 from repositories import JsonStudentRepo
 from services import NaiveStudentService
 
@@ -9,13 +9,6 @@ app = FastAPI()
 
 repo = JsonStudentRepo("students.json")
 service = NaiveStudentService(repo)
-
-
-class StudentIn(BaseModel):
-    model_config = ConfigDict(str_strip_whitespace=True)
-
-    name: str = Field(min_length=1, max_length=50)
-    group: str = Field(default="", max_length=20)
 
 
 @app.get("/")
