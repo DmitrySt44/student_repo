@@ -1,0 +1,9 @@
+services:
+  students-app:
+    build: .
+    container_name: students-app
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./students.json:/app/students.json
+    restart: unless-stopped
