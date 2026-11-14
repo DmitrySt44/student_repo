@@ -2,6 +2,26 @@ import json
 import os
 from abc import ABC, abstractmethod
 
+from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy.orm import declarative_base, sessionmaker
+
+Base = declarative_base()
+
+
+class StudentORM(Base):
+    __tablename__ = "students"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    group = Column(String, nullable=False)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "group": self.group,
+        }
+
 
 class IStudentRepo(ABC):
     @abstractmethod
@@ -113,3 +133,48 @@ class InMemoryStudentRepo(IStudentRepo):
             return False
         self.students.remove(student)
         return True
+
+
+class PostgresStudentRepo(IStudentRepo):
+    def __init__(self, db_url: str):
+        self.engine = create_engine(db_url)
+        Base.metadata.create_all(bind=self.engine)
+        self.SessionLocal = sessionmaker(bind=self.engine)
+
+    def get_students(self):
+        with self.SessionLocal() as session:
+            students = session.query(StudentORM).order_by(StudentORM.id).all()
+            return [s.to_dict() for s in students]
+
+    def get_student_by_id(self, student_id):
+        with self.SessionLocal() as session:
+            student = session.query(StudentORM).filter(StudentORM.id == student_id).first()
+            return student.to_dict() if student else None
+
+    def add_student(self, name, group):
+        with self.SessionLocal() as session:
+            new_student = StudentORM(name=name, group=group)
+            session.add(new_student)
+            session.commit()
+            session.refresh(new_student)
+            return new_student.to_dict()
+
+    def update_student(self, student_id, name, group):
+        with self.SessionLocal() as session:
+            student = session.query(StudentORM).filter(StudentORM.id == student_id).first()
+            if student is None:
+                return None
+            student.name = name
+            student.group = group
+            session.commit()
+            session.refresh(student)
+            return student.to_dict()
+
+    def delete_student(self, student_id):
+        with self.SessionLocal() as session:
+            student = session.query(StudentORM).filter(StudentORM.id == student_id).first()
+            if student is None:
+                return False
+            session.delete(student)
+            session.commit()
+            return True
