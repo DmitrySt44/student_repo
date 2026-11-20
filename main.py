@@ -8,10 +8,10 @@ from services import NaiveStudentService
 
 app = FastAPI()
 
-DATABASE_URL = os.getenv(
-    "DATABASE_URL",
-    "postgresql+psycopg2://postgres:secretpassword@localhost:5432/students_db"
-)
+DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL is not configured")
 
 repo = PostgresStudentRepo(DATABASE_URL)
 service = NaiveStudentService(repo)

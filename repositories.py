@@ -1,8 +1,9 @@
+import time
 import json
 import os
 from abc import ABC, abstractmethod
 
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, String, create_engine, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 Base = declarative_base()
@@ -135,11 +136,38 @@ class InMemoryStudentRepo(IStudentRepo):
         return True
 
 
+
 class PostgresStudentRepo(IStudentRepo):
     def __init__(self, db_url: str):
-        self.engine = create_engine(db_url)
-        Base.metadata.create_all(bind=self.engine)
+        self.engine = create_engine(
+            db_url,
+            pool_pre_ping=True,
+            connect_args={"connect_timeout": 5}
+        )
+
         self.SessionLocal = sessionmaker(bind=self.engine)
+
+        for attempt in range(10):
+            try:
+                with self.engine.connect() as connection:
+                    connection.execute(text("SELECT 1"))
+
+                Base.metadata.create_all(bind=self.engine)
+
+                print("PostgreSQL connected successfully")
+                break
+
+            except Exception as error:
+                if attempt == 9:
+                    raise RuntimeError(
+                        "Could not connect to PostgreSQL"
+                    ) from error
+
+                print(
+                    f"PostgreSQL connection attempt "
+                    f"{attempt + 1}/10 failed: {error}"
+                )
+                time.sleep(3)
 
     def get_students(self):
         with self.SessionLocal() as session:
@@ -148,7 +176,9 @@ class PostgresStudentRepo(IStudentRepo):
 
     def get_student_by_id(self, student_id):
         with self.SessionLocal() as session:
-            student = session.query(StudentORM).filter(StudentORM.id == student_id).first()
+            student = session.query(StudentORM).filter(
+                StudentORM.id == student_id
+            ).first()
             return student.to_dict() if student else None
 
     def add_student(self, name, group):
@@ -161,9 +191,13 @@ class PostgresStudentRepo(IStudentRepo):
 
     def update_student(self, student_id, name, group):
         with self.SessionLocal() as session:
-            student = session.query(StudentORM).filter(StudentORM.id == student_id).first()
+            student = session.query(StudentORM).filter(
+                StudentORM.id == student_id
+            ).first()
+
             if student is None:
                 return None
+
             student.name = name
             student.group = group
             session.commit()
@@ -172,9 +206,14 @@ class PostgresStudentRepo(IStudentRepo):
 
     def delete_student(self, student_id):
         with self.SessionLocal() as session:
-            student = session.query(StudentORM).filter(StudentORM.id == student_id).first()
+            student = session.query(StudentORM).filter(
+                StudentORM.id == student_id
+            ).first()
+
             if student is None:
                 return False
+
             session.delete(student)
             session.commit()
             return True
+
